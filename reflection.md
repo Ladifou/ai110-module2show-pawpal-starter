@@ -18,7 +18,7 @@ The scheduler considers the time slots availabilities, priorities, frequencies, 
 A pet's tasks can't conflict with each other including other pets if owner has multiple pets. A regular schedule starts at 9 AM but a 'Morning preferences' starts scheduling at 6AM. Higher priority and recurring tasks are scheduled first to esnsure essential care isn't skippe.
 
 **b. Tradeoffs**
-One tradeoff is the scheduling within 30 minute slot interval which limits tasks scheduling precision. This is reasonable as most tasks may need more than 15 min, it avoids expensive per minute calculations.
+One tradeoff is the single day planning which makes it impossible to optimize across multiple days. This is reasonable as it allows to implement simpler logic; daily plans should be good enough for routine pet care.
 
 ---
 

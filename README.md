@@ -104,13 +104,34 @@ pytest
 
 # Run with coverage:
 pytest --cov
+
+#
+python -m pytest
 ```
+
+The tests implemented include
+
+- TestSortingEdgeCases which test sorting tasks with identical and/or invalid priorities and frequencies. It also test the correctness of priority ordering from high to low.
+- TestRecuringTaskEdgeCases: Tests if recurring tasks are correctly rescheduled (+ 1day for daily and + 1 week for weekly). Non recurring tasks return None. Month and Year boundary crossing are also tested. When a recurring task is completed at the end of the month or year is should reschedule in next month or year.
+- TestSchedulingGapsAndConflicts: Tests to make sure tasks do not conflict and returns a warning if so. Also tests for multi-pet conflict.
+- TestTaskCompletionWithRecurrence: Tests for successful completion of tasks and that they are approprietly rescheduled if necessary based on reoccurence.
 
 Sample test output:
 
 ```
-# Paste your pytest output here
+(.venv) PS F:\CodePathAI110\ai110-module2show-pawpal-starter> python -m pytest
+================================= test session starts ==================================
+platform win32 -- Python 3.13.5, pytest-9.0.3, pluggy-1.6.0
+rootdir: F:\CodePathAI110\ai110-module2show-pawpal-starter
+plugins: anyio-4.13.0
+collected 28 items
+
+tests\test_paypal.py ............................                                 [100%]
+
+================================== 28 passed in 0.06s ==================================
 ```
+
+Based on the 100% test result and after evalujation of tests implemented by the AI companion my confidence level in the reliability of the system is at 5 stars.
 
 ## 📐 Smarter Scheduling
 
