@@ -54,6 +54,48 @@ Paste a sample of your app's CLI or Streamlit output here so a reader can see wh
 #   ...
 ```
 
+============================================================
+DAILY SCHEDULE FOR MAX
+============================================================
+
+## TASK DETAILS:
+
+1. 09:00 - 09:30 | Morning Walk
+   ├─ Type: WALK
+   ├─ Duration: 30 minutes
+   ├─ Priority: HIGH
+   └─ Description: Walk in the park
+
+2. 09:30 - 09:45 | Breakfast
+   ├─ Type: FEEDING
+   ├─ Duration: 15 minutes
+   ├─ Priority: HIGH
+   └─ Description: Feed Max his breakfast
+
+3. 09:45 - 10:15 | Afternoon Walk
+   ├─ Type: WALK
+   ├─ Duration: 30 minutes
+   ├─ Priority: MEDIUM
+   └─ Description: Walk in the neighborhood
+
+---
+
+## SCHEDULING SUMMARY:
+
+✓ Morning Walk scheduled at 09:00 - 09:30 (High priority task)
+✓ Breakfast scheduled at 09:30 - 09:45 (High priority task)
+✓ Afternoon Walk scheduled at 09:45 - 10:15 (Scheduled during morning preference)
+
+---
+
+## STATISTICS:
+
+Total Tasks: 3
+Total Duration: 75 minutes
+Schedule Start: 09:00
+Schedule End: 10:15
+============================================================
+
 ## 🧪 Testing PawPal+
 
 ```bash
@@ -74,12 +116,13 @@ Sample test output:
 
 > Fill in once you've implemented scheduling logic.
 
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Feature           | Method(s)                                        | Notes                                                                                                                                |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Task sorting      | Scheduler.get_sorted_tasks()                     | Sorts by priority and frequency                                                                                                      |
+| Filtering         | Scheduler.get_filtered_tasks()                   | Filter the current pet's tasks based on completion status, shedule status, and frequency.                                            |
+| Conflict handling | Scheduler.check_owner_conflict()                 | Check if owner is busy with another pet at this task's time (multi-pet conflict). Only checks conflicts on the same date as the task |
+|                   |
+| Recurring tasks   | Scheduler.mark_task_complete_and_schedule_next() | Mark a task as complete and create the next occurrence if it's recurring.                                                            |
 
 ## 📸 Demo Walkthrough
 
@@ -91,4 +134,4 @@ Describe your app in numbered steps so a reader can follow along without watchin
 4. <!-- Describe this step -->
 5. <!-- Add more steps as needed -->
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+**Screenshot or video** _(optional)_: <!-- Insert a screenshot or link to a demo video here -->

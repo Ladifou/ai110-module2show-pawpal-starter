@@ -3,28 +3,22 @@
 ## 1. System Design
 
 **a. Initial design**
-
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+My initial design included the Owner, Pet, Task, Constraints, and Scheduler classes. The Owner class which has a 1 to many relation with pet class. It also has a preference attribute which influences the scheduling process. The pet class in turn can have many tasks (1 to many relationship) and holds basic information tasks and their schedules. Scheduler uses Owner preferences to create constraints which are applied when placing tasks in appropriate timeslots. It also generate the reasoning for why tasks are scheduled that way.
 
 **b. Design changes**
 
-- Did your design change during implementation?
-- If yes, describe at least one change and why you made it.
+Yes. The design changed during implementation. Initially the Constraint class was not part of the design. I initially had each constraints as their own classes. I found that implementing them separately felt repetative and made the design a bit cluttered. So i opted to have a single class to keep the design clean, simpler and focused on the scheduling problem.
 
 ---
 
 ## 2. Scheduling Logic and Tradeoffs
 
 **a. Constraints and priorities**
-
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers the time slots availabilities, priorities, frequencies, and owner preferences.
+A pet's tasks can't conflict with each other including other pets if owner has multiple pets. A regular schedule starts at 9 AM but a 'Morning preferences' starts scheduling at 6AM. Higher priority and recurring tasks are scheduled first to esnsure essential care isn't skippe.
 
 **b. Tradeoffs**
-
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+One tradeoff is the scheduling within 30 minute slot interval which limits tasks scheduling precision. This is reasonable as most tasks may need more than 15 min, it avoids expensive per minute calculations.
 
 ---
 

@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from pawpal_system import Owner, Pet, Task, TaskType, Constraint, Scheduler
+from datetime import datetime
+from pawpal_system import Owner, Pet, Task, TaskType, Scheduler
 
 
 def main():
@@ -15,13 +15,13 @@ def main():
         phone="555-0123",
         address="123 Main St, Springfield"
     )
-    print(f"\n✓ Owner created: {owner.name}")
+    print(f"\n[OK] Owner created: {owner.name}")
 
     # Add owner preferences
     owner.add_preference("prefer morning walks")
     owner.add_preference("grooming last")
     owner.add_preference("only available 9-5")
-    print(f"✓ Owner preferences: {owner.get_preferences()}")
+    print(f"[OK] Owner preferences: {owner.get_preferences()}")
 
     # Create Pet 1: Max (Dog)
     max_pet = Pet(
@@ -32,7 +32,8 @@ def main():
         age=3,
         owner=owner
     )
-    print(f"\n✓ Pet created: {max_pet.name} ({max_pet.pet_type})")
+    owner.add_pet(max_pet)
+    print(f"\n[OK] Pet created: {max_pet.name} ({max_pet.pet_type})")
 
     # Create Pet 2: Luna (Cat)
     luna_pet = Pet(
@@ -43,7 +44,8 @@ def main():
         age=2,
         owner=owner
     )
-    print(f"✓ Pet created: {luna_pet.name} ({luna_pet.pet_type})")
+    owner.add_pet(luna_pet)
+    print(f"[OK] Pet created: {luna_pet.name} ({luna_pet.pet_type})")
 
     # Get today's date for task scheduling
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -62,7 +64,7 @@ def main():
         pet=max_pet,
         due_date=today
     )
-    print(f"✓ Task created: {task1.name} ({task1.get_duration()} mins)")
+    print(f"[OK] Task created: {task1.name} ({task1.get_duration()} mins)")
 
     task2 = Task(
         task_id="task_002",
@@ -75,7 +77,7 @@ def main():
         pet=max_pet,
         due_date=today
     )
-    print(f"✓ Task created: {task2.name} ({task2.get_duration()} mins)")
+    print(f"[OK] Task created: {task2.name} ({task2.get_duration()} mins)")
 
     task3 = Task(
         task_id="task_003",
@@ -86,9 +88,11 @@ def main():
         default_frequency="daily",
         default_priority="medium",
         pet=max_pet,
-        due_date=today
+        due_date=today,
+        start_time=today.replace(hour=10, minute=0),
+        end_time=today.replace(hour=10, minute=30)
     )
-    print(f"✓ Task created: {task3.name} ({task3.get_duration()} mins)")
+    print(f"[OK] Task created: {task3.name} ({task3.get_duration()} mins)")
 
     # Create tasks for Luna
     print(f"\n--- Creating tasks for {luna_pet.name} ---")
@@ -102,9 +106,11 @@ def main():
         default_frequency="daily",
         default_priority="high",
         pet=luna_pet,
-        due_date=today
+        due_date=today,
+        start_time=today.replace(hour=10, minute=0),
+        end_time=today.replace(hour=10, minute=10)
     )
-    print(f"✓ Task created: {task4.name} ({task4.get_duration()} mins)")
+    print(f"[OK] Task created: {task4.name} ({task4.get_duration()} mins)")
 
     task5 = Task(
         task_id="task_005",
@@ -117,7 +123,7 @@ def main():
         pet=luna_pet,
         due_date=today
     )
-    print(f"✓ Task created: {task5.name} ({task5.get_duration()} mins)")
+    print(f"[OK] Task created: {task5.name} ({task5.get_duration()} mins)")
 
     # Create scheduler for Max and schedule tasks
     print(f"\n--- Scheduling tasks for {max_pet.name} ---")
@@ -126,14 +132,14 @@ def main():
         pet=max_pet
     )
 
-    # Add tasks to scheduler
+    # Add tasks to pet
     tasks_max = [task1, task2, task3]
     for task in tasks_max:
-        scheduler_max.tasks.append(task)
+        max_pet.add_task(task)
 
     # Generate daily plan for Max
     daily_plan_max = scheduler_max.generate_daily_plan(today)
-    print(f"\n{scheduler_max.explain_schedule(daily_plan_max['explanation'])}")
+    print(f"\nMax's schedule: {len(daily_plan_max['scheduled_tasks'])} tasks scheduled")
 
     # Create scheduler for Luna and schedule tasks
     print(f"\n--- Scheduling tasks for {luna_pet.name} ---")
@@ -142,32 +148,59 @@ def main():
         pet=luna_pet
     )
 
-    # Add tasks to scheduler
+    # Add tasks to pet
     tasks_luna = [task4, task5]
     for task in tasks_luna:
-        scheduler_luna.tasks.append(task)
+        luna_pet.add_task(task)
 
     # Generate daily plan for Luna
     daily_plan_luna = scheduler_luna.generate_daily_plan(today)
-    print(f"\n{scheduler_luna.explain_schedule(daily_plan_luna['explanation'])}")
+    print(f"Luna's schedule: {len(daily_plan_luna['scheduled_tasks'])} tasks scheduled")
+
+    # Check for task conflicts
+    print("\n" + "=" * 60)
+    print("CONFLICT DETECTION")
+    print("=" * 60)
+
+    conflicts = scheduler_max.detect_conflicts(today)
+    if conflicts:
+        print(f"\nWARNING: Found {len(conflicts)} task conflict(s)!")
+        for pet1_name, task1_name, time1, pet2_name, task2_name, time2 in conflicts:
+            print(f"\n  WARNING: Owner cannot be in two places at once!")
+            print(f"    {pet1_name}: {task1_name} at {time1}")
+            print(f"    {pet2_name}: {task2_name} at {time2}")
+    else:
+        print("\nOK: No task conflicts detected. Owner can attend all scheduled tasks.")
 
     # Print summary
     print("\n" + "=" * 60)
-    print("DAILY SCHEDULE SUMMARY")
+    print("SYSTEM OVERVIEW")
     print("=" * 60)
-    print(f"Owner: {owner.name}")
-    print(f"Date: {today.strftime('%B %d, %Y')}")
-    print(f"\nOwner Preferences:")
+
+    print(f"\nOwner Information:")
+    print(f"  Name: {owner.name}")
+    print(f"  Email: {owner.email}")
+    print(f"  Phone: {owner.phone}")
+    print(f"  Address: {owner.address}")
+
+    print(f"\nOwner Preferences ({len(owner.get_preferences())}):")
     for pref in owner.get_preferences():
         print(f"  • {pref}")
 
-    print(f"\n{max_pet.name}'s Schedule:")
-    print(f"  Total tasks: {len(scheduler_max.tasks)}")
-    print(f"  Total duration: {sum(t.get_duration() for t in scheduler_max.tasks)} minutes")
+    print(f"\nPets ({len(owner.get_pets())}):")
+    for pet in owner.get_pets():
+        print(f"  • {pet.name} ({pet.pet_type}) - {pet.breed}, Age: {pet.age}")
 
-    print(f"\n{luna_pet.name}'s Schedule:")
-    print(f"  Total tasks: {len(scheduler_luna.tasks)}")
-    print(f"  Total duration: {sum(t.get_duration() for t in scheduler_luna.tasks)} minutes")
+    print(f"\nDaily Schedule Summary ({today.strftime('%B %d, %Y')}):")
+
+    for pet in owner.get_pets():
+        schedule = pet.get_schedule()
+        total_duration = sum(t.get_duration() for t in schedule)
+        print(f"\n  {pet.name}:")
+        print(f"    - Total Tasks: {len(schedule)}")
+        print(f"    - Total Duration: {total_duration} minutes")
+        if schedule:
+            print(f"    - Tasks: {', '.join([t.name for t in schedule])}")
 
     print("\n" + "=" * 60)
 
