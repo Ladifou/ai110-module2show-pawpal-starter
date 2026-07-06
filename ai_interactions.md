@@ -10,15 +10,19 @@
 
 **What task did you give the agent?**
 
-<!-- Describe the goal you asked the agent to accomplish -->
+I asked Claude to help me implement an improved scheduling logic based on priorities and owner preferences.
 
 **What did the agent do?**
 
-<!-- List the steps the agent took (files edited, commands run, etc.) -->
+It edited the Scheduler() class in pawpal_system.py file then ran several Bash commands.
+
+- it ran commands to verify syntax correctness from the updates
+- created a testing file to test the priority scheduling, identified errors and fixed them.
+- Deleted the temporary testing file then provided an explanation of the changes implemented + tests results.
 
 **What did you have to verify or fix manually?**
 
-<!-- Describe anything the agent got wrong or that required human review -->
+In my app, the clicking the generate schedule button caused a rerun of the app (streamlit) causing some filtering/sorting features to fail. I initially asked Claude why it was happening, it responded that it couldn't find any error in the code. I had to mention the streamlit rerun resetting sorting selections before it was able to correct the bug. Another issue that i encountered was it inconsistency to update dependent files such as main.py and app.py.
 
 ---
 
@@ -26,14 +30,14 @@
 
 > Compare two different prompts (or two different models) on the same task.
 
-| | Option A | Option B |
-|-|----------|----------|
-| **Model / tool used** | | |
-| **Prompt** | | |
-| **Response summary** | | |
-| **What was useful** | | |
-| **Problems noticed** | | |
-| **Decision** | | |
+|                       | Option A | Option B |
+| --------------------- | -------- | -------- |
+| **Model / tool used** |          |          |
+| **Prompt**            |          |          |
+| **Response summary**  |          |          |
+| **What was useful**   |          |          |
+| **Problems noticed**  |          |          |
+| **Decision**          |          |          |
 
 **Which approach did you use in your final implementation and why?**
 
