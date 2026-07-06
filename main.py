@@ -2,6 +2,118 @@ from datetime import datetime
 from pawpal_system import Owner, Pet, Task, TaskType, Scheduler
 
 
+def visualize_priority_scheduling(pets, title="PRIORITY-BASED SCHEDULING VISUALIZATION"):
+    """Visualize how tasks are scheduled by priority level."""
+    print("\n" + "=" * 80)
+    print(title)
+    print("=" * 80)
+
+    # Collect all tasks with their priorities
+    all_tasks = []
+    for pet in pets:
+        for task in pet.tasks:
+            all_tasks.append({
+                'pet': pet.name,
+                'task': task.name,
+                'priority': task.default_priority.upper(),
+                'duration': task.default_duration,
+                'start_time': task.start_time,
+                'end_time': task.end_time,
+                'type': task.task_type.value
+            })
+
+    if not all_tasks:
+        print("No tasks to visualize.")
+        return
+
+    # Priority order mapping
+    priority_order = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2}
+
+    # Sort tasks by priority
+    sorted_tasks = sorted(all_tasks, key=lambda x: priority_order.get(x['priority'], 3))
+
+    print("\nSCHEDULING QUEUE - by priority order:\n")
+    print(f"{'Order':<8} {'Priority':<10} {'Pet':<12} {'Task':<20} {'Duration':<8} {'Scheduled':<10}")
+    print("-" * 80)
+
+    for idx, task in enumerate(sorted_tasks, 1):
+        scheduled_status = "YES" if task['start_time'] else "NO"
+        print(f"{idx:<8} {task['priority']:<10} {task['pet']:<12} {task['task']:<20} {task['duration']:>2} min  {scheduled_status:<10}")
+
+    # Timeline visualization
+    print("\n\nDAILY SCHEDULE TIMELINE:\n")
+
+    # Group tasks by pet
+    tasks_by_pet = {}
+    for task in sorted_tasks:
+        if task['pet'] not in tasks_by_pet:
+            tasks_by_pet[task['pet']] = []
+        tasks_by_pet[task['pet']].append(task)
+
+    for pet_name, tasks in tasks_by_pet.items():
+        print(f"\n{pet_name}'s Schedule:")
+        print("---" + "-" * 70)
+
+        for task in tasks:
+            priority = task['priority']
+            priority_tag = {'HIGH': 'HIGH  ', 'MEDIUM': 'MED   ', 'LOW': 'LOW   '}[priority]
+
+            if task['start_time'] and task['end_time']:
+                start = task['start_time'].strftime('%H:%M')
+                end = task['end_time'].strftime('%H:%M')
+                time_slot = f"{start}-{end}"
+                status = "SCHEDULED"
+
+                print(f"  {priority_tag} {time_slot}  {task['task']:<20} Duration: {task['duration']:>2} min  {status}")
+            else:
+                status = "UNSCHEDULED (no time slot)"
+                print(f"  {priority_tag} ----------  {task['task']:<20} Duration: {task['duration']:>2} min  {status}")
+
+        print("---" + "-" * 70)
+
+    # Priority scheduling explanation
+    print("\n\nSCHEDULING ALGORITHM IN ACTION:\n")
+    print("Step 1: Collect all tasks")
+    print(f"  Total tasks collected: {len(all_tasks)}")
+
+    high_priority = [t for t in all_tasks if t['priority'] == 'HIGH']
+    medium_priority = [t for t in all_tasks if t['priority'] == 'MEDIUM']
+    low_priority = [t for t in all_tasks if t['priority'] == 'LOW']
+
+    print(f"\nStep 2: Sort by priority level")
+    print(f"  HIGH priority tasks:   {len(high_priority)} task(s)")
+    print(f"  MEDIUM priority tasks: {len(medium_priority)} task(s)")
+    print(f"  LOW priority tasks:    {len(low_priority)} task(s)")
+
+    scheduled = [t for t in all_tasks if t['start_time']]
+    unscheduled = [t for t in all_tasks if not t['start_time']]
+
+    print(f"\nStep 3: Attempt to schedule tasks (highest priority first)")
+    print(f"  Successfully scheduled: {len(scheduled)} tasks")
+    print(f"  Could not schedule:     {len(unscheduled)} tasks")
+
+    if unscheduled:
+        print(f"\n  Unscheduled tasks (no available time slots found):")
+        for task in unscheduled:
+            print(f"    - {task['pet']}: {task['task']} ({task['priority']} priority)")
+
+    # Priority impact visualization
+    print("\n\nPRIORITY IMPACT ANALYSIS:\n")
+    for priority_level in ['HIGH', 'MEDIUM', 'LOW']:
+        tasks_at_level = [t for t in all_tasks if t['priority'] == priority_level]
+        scheduled_at_level = [t for t in tasks_at_level if t['start_time']]
+
+        if tasks_at_level:
+            success_rate = (len(scheduled_at_level) / len(tasks_at_level)) * 100
+            bar_filled = int(success_rate / 10)
+            bar_empty = 10 - bar_filled
+            visual_bar = "=" * bar_filled + " " * bar_empty
+
+            print(f"{priority_level:8} {visual_bar}  {success_rate:5.0f}% ({len(scheduled_at_level)}/{len(tasks_at_level)} scheduled)")
+
+    print("\n" + "=" * 80)
+
+
 def main():
     print("=" * 60)
     print("PAWPAL - Pet Care Scheduling System")
@@ -152,6 +264,9 @@ def main():
     # Generate daily plan for Luna
     daily_plan_luna = scheduler_luna.generate_daily_plan(today)
     print(f"Luna's schedule: {len(daily_plan_luna['scheduled_tasks'])} tasks scheduled")
+
+    # Visualize priority-based scheduling
+    visualize_priority_scheduling([max_pet, luna_pet])
 
     # Display detailed schedule explanations
     print("\n" + "=" * 60)

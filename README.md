@@ -87,3 +87,66 @@ Describe your app in numbered steps so a reader can follow along without watchin
 
 **Demo video** :  
  <video controls src="20260706-0313-30.1358615.mp4" title="Title"></video>
+
+## Challenge 3: Advance priority scheduling
+
+```
+
+================================================================================
+PRIORITY-BASED SCHEDULING VISUALIZATION
+================================================================================
+
+SCHEDULING QUEUE - by priority order:
+
+Order    Priority   Pet          Task                 Duration Scheduled
+--------------------------------------------------------------------------------
+1        HIGH       Max          Morning Walk         30 min  YES
+2        HIGH       Max          Breakfast            15 min  YES
+3        HIGH       Luna         Feeding              10 min  YES
+4        MEDIUM     Max          Afternoon Walk       30 min  YES
+5        MEDIUM     Luna         Playtime             20 min  YES
+
+
+DAILY SCHEDULE TIMELINE:
+
+
+Max's Schedule:
+-------------------------------------------------------------------------
+ HIGH   06:00-06:30  Morning Walk         Duration: 30 min  SCHEDULED
+ HIGH   09:00-09:15  Breakfast            Duration: 15 min  SCHEDULED
+ MED    06:30-07:00  Afternoon Walk       Duration: 30 min  SCHEDULED
+-------------------------------------------------------------------------
+
+Luna's Schedule:
+-------------------------------------------------------------------------
+ HIGH   09:15-09:25  Feeding              Duration: 10 min  SCHEDULED
+ MED    09:25-09:45  Playtime             Duration: 20 min  SCHEDULED
+-------------------------------------------------------------------------
+
+
+SCHEDULING ALGORITHM IN ACTION:
+
+Step 1: Collect all tasks
+ Total tasks collected: 5
+
+Step 2: Sort by priority level
+ HIGH priority tasks:   3 task(s)
+ MEDIUM priority tasks: 2 task(s)
+ LOW priority tasks:    0 task(s)
+
+Step 3: Attempt to schedule tasks (highest priority first)
+ Successfully scheduled: 5 tasks
+ Could not schedule:     0 tasks
+
+```
+
+## Challenge 4: Professional UI and Output Formatting
+
+- Task completion management  
+  Clear visual indicators by using icons to show tasks completion status(tick for completed vs hourglass for pending). A completion confirmation message in green bubble is also implemented.
+  ![alt text](image.png)
+- Task viewing and sorting  
+  Task list can be sorted by default, time, or priority in a comprehensive table with necessary task details including a completion button. This button is disable for tasks not scheduled (today).
+  ![alt text](image-1.png)
+- The user needs to register at least one pet before registering tasks. This is indicated by yellow banner notifying the user.
+  ![alt text](image-2.png)
