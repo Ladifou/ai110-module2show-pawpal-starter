@@ -21,7 +21,7 @@ def main():
     owner.add_preference("prefer morning walks")
     owner.add_preference("grooming last")
     owner.add_preference("only available 9-5")
-    print(f"[OK] Owner preferences: {owner.get_preferences()}")
+    print(f"[OK] Owner preferences added: {len(owner.preferences)} preferences")
 
     # Create Pet 1: Max (Dog)
     max_pet = Pet(
@@ -64,7 +64,7 @@ def main():
         pet=max_pet,
         due_date=today
     )
-    print(f"[OK] Task created: {task1.name} ({task1.get_duration()} mins)")
+    print(f"[OK] Task created: {task1.name} ({task1.default_duration} mins)")
 
     task2 = Task(
         task_id="task_002",
@@ -77,7 +77,7 @@ def main():
         pet=max_pet,
         due_date=today
     )
-    print(f"[OK] Task created: {task2.name} ({task2.get_duration()} mins)")
+    print(f"[OK] Task created: {task2.name} ({task2.default_duration} mins)")
 
     task3 = Task(
         task_id="task_003",
@@ -88,11 +88,9 @@ def main():
         default_frequency="daily",
         default_priority="medium",
         pet=max_pet,
-        due_date=today,
-        start_time=today.replace(hour=10, minute=0),
-        end_time=today.replace(hour=10, minute=30)
+        due_date=today
     )
-    print(f"[OK] Task created: {task3.name} ({task3.get_duration()} mins)")
+    print(f"[OK] Task created: {task3.name} ({task3.default_duration} mins)")
 
     # Create tasks for Luna
     print(f"\n--- Creating tasks for {luna_pet.name} ---")
@@ -106,11 +104,9 @@ def main():
         default_frequency="daily",
         default_priority="high",
         pet=luna_pet,
-        due_date=today,
-        start_time=today.replace(hour=10, minute=0),
-        end_time=today.replace(hour=10, minute=10)
+        due_date=today
     )
-    print(f"[OK] Task created: {task4.name} ({task4.get_duration()} mins)")
+    print(f"[OK] Task created: {task4.name} ({task4.default_duration} mins)")
 
     task5 = Task(
         task_id="task_005",
@@ -123,7 +119,7 @@ def main():
         pet=luna_pet,
         due_date=today
     )
-    print(f"[OK] Task created: {task5.name} ({task5.get_duration()} mins)")
+    print(f"[OK] Task created: {task5.name} ({task5.default_duration} mins)")
 
     # Create scheduler for Max and schedule tasks
     print(f"\n--- Scheduling tasks for {max_pet.name} ---")
@@ -157,6 +153,17 @@ def main():
     daily_plan_luna = scheduler_luna.generate_daily_plan(today)
     print(f"Luna's schedule: {len(daily_plan_luna['scheduled_tasks'])} tasks scheduled")
 
+    # Display detailed schedule explanations
+    print("\n" + "=" * 60)
+    print("DETAILED SCHEDULE EXPLANATIONS")
+    print("=" * 60)
+
+    print("\n--- Scheduling Rationale for Max ---")
+    print(scheduler_max.explain_schedule(daily_plan_max['explanation']))
+
+    print("\n--- Scheduling Rationale for Luna ---")
+    print(scheduler_luna.explain_schedule(daily_plan_luna['explanation']))
+
     # Check for task conflicts
     print("\n" + "=" * 60)
     print("CONFLICT DETECTION")
@@ -183,24 +190,13 @@ def main():
     print(f"  Phone: {owner.phone}")
     print(f"  Address: {owner.address}")
 
-    print(f"\nOwner Preferences ({len(owner.get_preferences())}):")
-    for pref in owner.get_preferences():
+    print(f"\nOwner Preferences ({len(owner.preferences)}):")
+    for pref in owner.preferences:
         print(f"  • {pref}")
 
-    print(f"\nPets ({len(owner.get_pets())}):")
-    for pet in owner.get_pets():
+    print(f"\nPets ({len(owner.pets)}):")
+    for pet in owner.pets:
         print(f"  • {pet.name} ({pet.pet_type}) - {pet.breed}, Age: {pet.age}")
-
-    print(f"\nDaily Schedule Summary ({today.strftime('%B %d, %Y')}):")
-
-    for pet in owner.get_pets():
-        schedule = pet.get_schedule()
-        total_duration = sum(t.get_duration() for t in schedule)
-        print(f"\n  {pet.name}:")
-        print(f"    - Total Tasks: {len(schedule)}")
-        print(f"    - Total Duration: {total_duration} minutes")
-        if schedule:
-            print(f"    - Tasks: {', '.join([t.name for t in schedule])}")
 
     print("\n" + "=" * 60)
 

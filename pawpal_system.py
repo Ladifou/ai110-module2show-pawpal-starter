@@ -38,66 +38,86 @@ class Owner:
             self.preferences.append(preference)
             self._preference_cache.add(normalized)
 
-    def get_preferences(self) -> List[str]:
-        """Retrieve a copy of the owner's scheduling preferences."""
-        return self.preferences.copy()
-
     def has_preference(self, keyword: str) -> bool:
-        """O(1) lookup: check if owner has a preference containing keyword."""
-        return keyword.lower() in self._preference_cache
-
-    def remove_preference(self, preference: str) -> None:
-        """Remove a scheduling preference from the owner."""
-        if preference in self.preferences:
-            self.preferences.remove(preference)
+        """Check if owner has a preference containing keyword."""
+        keyword_lower = keyword.lower()
+        return any(keyword_lower in pref.lower() for pref in self.preferences)
 
     def add_pet(self, pet: 'Pet') -> None:
         """Add a pet to the owner's list of pets (duplicates are not added)."""
         if pet not in self.pets:
             self.pets.append(pet)
 
-    def remove_pet(self, pet: 'Pet') -> None:
-        """Remove a pet from the owner's list of pets."""
-        if pet in self.pets:
-            self.pets.remove(pet)
-
-    def get_pets(self) -> List['Pet']:
-        """Return a copy of all pets owned by this owner."""
-        return self.pets.copy()
-
-    def request_daily_plan(self, pet: 'Pet', date: datetime) -> Dict:
-        """Request a daily schedule plan for a pet."""
-        scheduler = Scheduler(f"scheduler_{pet.pet_id}", pet)
-        return scheduler.generate_daily_plan(date)
-
     def filter_all_tasks(self, pet_id: Optional[str] = None, completed: Optional[bool] = None,
                          frequency: Optional[str] = None) -> List['Task']:
-        """Filter tasks across all pets owned by this owner.
-
-        Args:
-            pet_id: Filter by specific pet ID. If None, return tasks from all pets.
-            completed: If True, return only completed tasks. If False, return only pending. If None, return all.
-            frequency: Filter by frequency ("daily", "weekly", etc.). If None, return all frequencies.
-
-        Returns:
-            List of tasks matching the filter criteria, organized by pet.
-        """
+        """Filter tasks across all pets owned by this owner."""
         all_tasks = []
-
         for pet in self.pets:
             if pet_id and pet.pet_id != pet_id:
                 continue
             all_tasks.extend(pet.filter_tasks(completed=completed, frequency=frequency))
-
         return all_tasks
 
-    def get_all_pending_tasks(self) -> List['Task']:
-        """Get all pending tasks across all owned pets."""
-        return self.filter_all_tasks(completed=False)
+    def generate_global_schedule(self, date: datetime) -> Dict:
+        """Generate schedules for all pets with global high-priority task scheduling.
 
-    def get_all_completed_tasks(self) -> List['Task']:
-        """Get all completed tasks across all owned pets."""
-        return self.filter_all_tasks(completed=True)
+        All high-priority tasks across all pets are scheduled first,
+        then medium-priority, then low-priority tasks.
+
+        Args:
+            date: Date to generate schedules for
+
+        Returns:
+            Dict with pet schedules and scheduling summary
+        """
+        # Collect all pending tasks from all pets with their pet reference
+        all_tasks = []
+        for pet in self.pets:
+            for task in pet.tasks:
+                if task.due_date.date() == date.date() and not task.is_completed:
+                    all_tasks.append((pet, task))
+
+        # Sort globally by priority (high first) then frequency
+        priority_order = {"high": 0, "medium": 1, "low": 2}
+        frequency_order = {"daily": 0, "weekly": 1, "occasional": 2}
+
+        all_tasks.sort(key=lambda x: (
+            priority_order.get(x[1].priority.lower(), 3),
+            frequency_order.get(x[1].default_frequency.lower(), 3)
+        ))
+
+        # Schedule tasks in global priority order
+        scheduled_info = []
+        for pet, task in all_tasks:
+            scheduler = Scheduler(scheduler_id=f"scheduler_{pet.pet_id}", pet=pet)
+            constraints = scheduler.generate_constraints(pet, self, task)
+
+            available_slot = scheduler.find_available_slot(task, constraints)
+            if available_slot:
+                end_time = scheduler._calculate_end_time(available_slot, task.default_duration)
+                task.update_time_slot(available_slot, end_time)
+                scheduled_info.append((pet.name, task.name, task.priority.upper(),
+                                      available_slot.strftime('%H:%M'),
+                                      end_time.strftime('%H:%M')))
+
+        # Generate individual pet schedules
+        pet_schedules = {}
+        for pet in self.pets:
+            scheduler = Scheduler(scheduler_id=f"scheduler_{pet.pet_id}", pet=pet)
+            daily_plan = scheduler.generate_daily_plan(date)
+            pet_schedules[pet.pet_id] = {
+                "pet_name": pet.name,
+                "scheduled_tasks": len(daily_plan['scheduled_tasks']),
+                "tasks": daily_plan['scheduled_tasks']
+            }
+
+        return {
+            "date": date,
+            "pet_schedules": pet_schedules,
+            "scheduled_info": scheduled_info,
+            "total_tasks": len(all_tasks),
+            "total_scheduled": len(scheduled_info)
+        }
 
 
 @dataclass
@@ -121,19 +141,10 @@ class Pet:
         if task not in self.tasks:
             self.tasks.append(task)
 
-    def get_schedule(self) -> List['Task']:
-        """Retrieve a copy of all tasks scheduled for this pet."""
-        return self.tasks.copy()
-
-    def get_task_count(self) -> int:
-        """Return the total number of tasks scheduled for this pet."""
-        return len(self.tasks)
-
     def mark_task_complete(self, task: 'Task') -> Optional['Task']:
         """Mark a task as complete and create next occurrence if recurring."""
         if task not in self.tasks:
             return None
-
         task.mark_complete()
         next_task = task.create_next_occurrence()
         if next_task:
@@ -142,40 +153,13 @@ class Pet:
         return None
 
     def filter_tasks(self, completed: Optional[bool] = None, frequency: Optional[str] = None) -> List['Task']:
-        """Filter tasks by completion status and/or frequency.
-
-        Args:
-            completed: If True, return only completed tasks. If False, return only pending tasks. If None, return all.
-            frequency: Filter by frequency ("daily", "weekly", etc.). If None, return all frequencies.
-
-        Returns:
-            List of tasks matching the filter criteria.
-        """
+        """Filter tasks by completion status and/or frequency."""
         filtered = self.tasks.copy()
-
         if completed is not None:
             filtered = [t for t in filtered if t.is_completed == completed]
-
         if frequency is not None:
             filtered = [t for t in filtered if t.default_frequency.lower() == frequency.lower()]
-
         return filtered
-
-    def get_pending_tasks(self) -> List['Task']:
-        """Get all pending (incomplete) tasks for this pet."""
-        return self.filter_tasks(completed=False)
-
-    def get_completed_tasks(self) -> List['Task']:
-        """Get all completed tasks for this pet."""
-        return self.filter_tasks(completed=True)
-
-    def get_daily_tasks(self) -> List['Task']:
-        """Get all daily recurring tasks for this pet."""
-        return self.filter_tasks(frequency="daily")
-
-    def get_weekly_tasks(self) -> List['Task']:
-        """Get all weekly recurring tasks for this pet."""
-        return self.filter_tasks(frequency="weekly")
 
 
 @dataclass
@@ -195,25 +179,7 @@ class Constraint:
             task_start = time_slot.get("start")
             if task_start:
                 return start_hour <= task_start.hour < end_hour
-            return True
         return True
-
-    def check_conflict(self, time_slot: dict) -> bool:
-        """Check if a time slot conflicts with this constraint."""
-        if self.constraint_type == "unavailable_time":
-            excluded_start = self.affected_times.get("start")
-            excluded_end = self.affected_times.get("end")
-            task_start = time_slot.get("start")
-            task_end = time_slot.get("end")
-            if excluded_start and excluded_end and task_start and task_end:
-                return not (task_end <= excluded_start or task_start >= excluded_end)
-        return False
-
-    def get_satisfaction_score(self, task: 'Task') -> float:
-        """Return a satisfaction score (0.0-1.0) for how well a task meets this preference."""
-        if self.constraint_type == "preference":
-            return 1.0 if self.priority > 0 else 0.5
-        return 0.0
 
 
 @dataclass
@@ -288,18 +254,6 @@ class Task:
         if constraint not in self.constraints:
             self.constraints.append(constraint)
 
-    def get_constraints(self) -> List[Constraint]:
-        """Return a copy of all constraints associated with this task."""
-        return self.constraints.copy()
-
-    def get_duration(self) -> int:
-        """Return the default duration of this task in minutes."""
-        return self.default_duration
-
-    def get_frequency(self) -> str:
-        """Return the frequency at which this task should be performed."""
-        return self.default_frequency
-
 
 @dataclass
 class Scheduler:
@@ -310,7 +264,6 @@ class Scheduler:
     def generate_daily_plan(self, date: datetime) -> Dict:
         """Generate a daily schedule plan for the pet based on priority and constraints.
         Only schedules tasks whose due_date matches the requested date."""
-        constraints = self.generate_constraints(self.pet, self.pet.owner)
         scheduled_tasks = []
         scheduling_reasons = []
 
@@ -327,9 +280,11 @@ class Scheduler:
             task.end_time = None
 
         for task in tasks_for_today:
+            # Generate constraints specific to this task
+            constraints = self.generate_constraints(self.pet, self.pet.owner, task)
             available_slot = self.find_available_slot(task, constraints)
             if available_slot:
-                end_time = self._calculate_end_time(available_slot, task.get_duration())
+                end_time = self._calculate_end_time(available_slot, task.default_duration)
                 task.update_time_slot(available_slot, end_time)
                 scheduled_tasks.append(task)
 
@@ -360,37 +315,74 @@ class Scheduler:
         return start_time + timedelta(minutes=duration_minutes)
 
     def _generate_task_explanation(self, task: Task, start_time: datetime, end_time: datetime) -> str:
-        """Generate a string explaining why a task was scheduled at a particular time."""
-        reason = f"✓ {task.name} scheduled at {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}"
+        """Generate a detailed explanation of why a task was scheduled at a particular time."""
+        reasons = []
 
+        # Priority-based reasoning
         if task.priority.lower() == "high":
-            reason += " (High priority task)"
-        elif task.task_type == TaskType.WALK and self.pet.owner.has_preference("morning"):
-            reason += " (Scheduled during morning preference)"
+            reasons.append("High priority task scheduled first")
+        elif task.priority.lower() == "medium":
+            reasons.append("Medium priority task scheduled after high-priority tasks")
+        else:
+            reasons.append("Low priority task scheduled in available slot")
+
+        # Task type specific reasoning
+        if task.task_type == TaskType.MEDICATION:
+            reasons.append("Medication must be administered at regular intervals")
         elif task.task_type == TaskType.FEEDING:
-            reason += " (Essential feeding time)"
-        elif task.task_type == TaskType.MEDICATION:
-            reason += " (Medication must be administered)"
+            reasons.append("Essential feeding time for pet health")
+        elif task.task_type == TaskType.WALK:
+            reasons.append("Exercise/walk scheduled for pet activity")
+        elif task.task_type == TaskType.GROOMING:
+            reasons.append("Grooming session scheduled")
+        elif task.task_type == TaskType.ENRICHMENT:
+            reasons.append("Enrichment activity for mental stimulation")
 
-        return reason
+        # Owner preference-based reasoning - check actual time constraints
+        if start_time.hour >= 6 and start_time.hour < 12:
+            if task.task_type == TaskType.WALK and self.pet.owner.has_preference("morning"):
+                reasons.append("Scheduled during owner's preferred morning time window (6 AM - 12 PM)")
+            elif self.pet.owner.has_preference("morning"):
+                reasons.append("Scheduled within morning preference window")
 
-    def generate_constraints(self, pet: Pet, owner: Owner) -> List[Constraint]:
-        """Generate scheduling constraints from owner preferences (morning -> time window, available -> availability)."""
+        # Frequency-based reasoning
+        if task.default_frequency.lower() == "daily":
+            reasons.append("Daily recurring task")
+        elif task.default_frequency.lower() == "weekly":
+            reasons.append("Weekly recurring task")
+
+        # Conflict avoidance reasoning
+        if len(self.pet.owner.pets) > 1:
+            reasons.append("Time selected to avoid conflicts with other pets' schedules")
+
+        reason_text = " | ".join(reasons)
+        return f"✓ {task.name} scheduled at {start_time.strftime('%H:%M')} - {end_time.strftime('%H:%M')}\n   {reason_text}"
+
+    def generate_constraints(self, pet: Pet, owner: Owner, task: Optional['Task'] = None) -> List[Constraint]:
+        """Generate scheduling constraints from owner preferences (morning -> time window, available -> availability).
+
+        Args:
+            pet: Pet being scheduled
+            owner: Owner with preferences
+            task: Optional task - if provided, only returns constraints applicable to this task
+        """
         constraints = []
         constraint_id = 0
 
-        for preference in owner.get_preferences():
+        for preference in owner.preferences:
             pref_lower = preference.lower()
             if "morning" in pref_lower:
-                constraints.append(Constraint(
-                    f"constraint_{constraint_id}",
-                    "time_window",
-                    preference,
-                    is_hard_constraint=False,
-                    priority=1,
-                    affected_times={"start_hour": 6, "end_hour": 12}
-                ))
-                constraint_id += 1
+                # Morning preference applies only to walk tasks
+                if task is None or task.task_type == TaskType.WALK:
+                    constraints.append(Constraint(
+                        f"constraint_{constraint_id}",
+                        "time_window",
+                        preference,
+                        is_hard_constraint=False,
+                        priority=2,
+                        affected_times={"start_hour": 6, "end_hour": 12}
+                    ))
+                    constraint_id += 1
             elif "available" in pref_lower:
                 constraints.append(Constraint(
                     f"constraint_{constraint_id}",
@@ -403,36 +395,6 @@ class Scheduler:
 
         return constraints
 
-    def schedule_tasks(self, task: Task, constraints: List[Constraint]) -> bool:
-        """Schedule a task if constraints are satisfied and no time conflicts exist."""
-        if not self.validate_constraints(task, constraints):
-            return False
-        if self.check_time_overlap(task):
-            return False
-        self.pet.add_task(task)
-        return True
-
-    def validate_constraints(self, task: Task, constraints: List[Constraint]) -> bool:
-        """Validate that a task satisfies all hard constraints."""
-        time_slot = task.get_time_slot()
-        for constraint in constraints:
-            if constraint.is_hard_constraint:
-                if not constraint.validate(task, time_slot):
-                    return False
-        return True
-
-    def check_time_overlap(self, task: Task) -> bool:
-        """Check if a task's time slot overlaps with any scheduled tasks."""
-        if not task.start_time or not task.end_time:
-            return False
-
-        for scheduled_task in self.pet.tasks:
-            if scheduled_task.start_time and scheduled_task.end_time:
-                if not (task.end_time <= scheduled_task.start_time or
-                        task.start_time >= scheduled_task.end_time):
-                    return True
-        return False
-
     def check_owner_conflict(self, task: Task) -> bool:
         """Check if owner is busy with another pet at this task's time (multi-pet conflict).
         Only checks conflicts on the same date as the task."""
@@ -443,7 +405,7 @@ class Scheduler:
         task_date = task.due_date.date()
         owner = self.pet.owner
 
-        for other_pet in owner.get_pets():
+        for other_pet in owner.pets:
             if other_pet.pet_id == self.pet.pet_id:
                 continue
             for other_task in other_pet.tasks:
@@ -452,61 +414,52 @@ class Scheduler:
                     if not (task.end_time <= other_task.start_time or task.start_time >= other_task.end_time):
                         return True
         return False
-
-
-    def get_owner_scheduled_times(self) -> List[tuple]:
-        """Get all scheduled time slots for all pets owned by this owner (excluding current pet)."""
-        all_times = []
-        for pet in self.pet.owner.get_pets():
-            if pet.pet_id == self.pet.pet_id:
-                continue
-            for task in pet.tasks:
-                if task.start_time and task.end_time:
-                    all_times.append((task.start_time, task.end_time, pet.name, task.name))
-        return sorted(all_times, key=lambda x: x[0])
-
-    def mark_task_complete_and_schedule_next(self, task: Task) -> Optional[Task]:
-        """Mark a task as complete and create the next occurrence if it's recurring."""
-        task.mark_complete()
-
-        next_task = task.create_next_occurrence()
-        if next_task:
-            self.pet.add_task(next_task)
-            return next_task
-        return None
-
     def find_available_slot(self, task: Task, constraints: List[Constraint]) -> Optional[datetime]:
         """Find an available time slot for a task considering ALL pets' schedules.
-        Uses interval-based gap detection to try multiple slots (9 AM - 5 PM)."""
+        Prioritizes slots that satisfy soft constraints (owner preferences) while respecting hard constraints.
+        Uses interval-based gap detection, starting at 6 AM for morning-preferred walks, 9 AM for others."""
         base_date = task.due_date if task.due_date else datetime.now()
         duration_minutes = task.default_duration
 
         # Find all gaps in the schedule that fit the task duration
-        gaps = self._find_schedule_gaps(base_date, duration_minutes)
+        gaps = self._find_schedule_gaps(base_date, duration_minutes, task)
 
-        # Try each gap to find one that satisfies constraints
+        # Score each gap based on constraint satisfaction
+        valid_gaps = []
         for gap_start in gaps:
-            if self._satisfies_constraints(task, gap_start, constraints):
+            hard_satisfied, soft_score = self._satisfies_constraints(task, gap_start, constraints)
+            if hard_satisfied:
                 # Temporarily set times to verify no conflicts
                 end_time = self._calculate_end_time(gap_start, duration_minutes)
                 task.start_time = gap_start
                 task.end_time = end_time
 
                 if not self.check_owner_conflict(task):
-                    return gap_start
+                    valid_gaps.append((soft_score, gap_start))
 
-                # Reset and try next gap
+                # Reset for next attempt
                 task.start_time = None
                 task.end_time = None
 
+        # Sort by soft constraint score (descending) and return best match
+        if valid_gaps:
+            valid_gaps.sort(key=lambda x: x[0], reverse=True)
+            return valid_gaps[0][1]
+
         return None
 
-    def _find_schedule_gaps(self, base_date: datetime, duration_minutes: int) -> List[datetime]:
-        """Find all available time gaps (at least duration_minutes long) between 9 AM - 5 PM.
+    def _find_schedule_gaps(self, base_date: datetime, duration_minutes: int, task: Optional['Task'] = None) -> List[datetime]:
+        """Find all available time gaps (at least duration_minutes long) between 6 AM - 5 PM.
+        Starts at 6 AM if owner has morning preference for walks, otherwise 9 AM.
         Considers both current pet's scheduled tasks and other pets' tasks on the same date."""
         gaps = []
 
-        day_start = base_date.replace(hour=9, minute=0, second=0, microsecond=0)
+        # Check if owner has morning preference for walks
+        start_hour = 9
+        if task and task.task_type == TaskType.WALK and self.pet.owner.has_preference("morning"):
+            start_hour = 6
+
+        day_start = base_date.replace(hour=start_hour, minute=0, second=0, microsecond=0)
         day_end = base_date.replace(hour=17, minute=0, second=0, microsecond=0)
 
         # Get ALL scheduled times for the requested date only (current pet + other pets)
@@ -552,7 +505,7 @@ class Scheduler:
                 all_times.append((task.start_time, task.end_time))
 
         # Add other pets' scheduled tasks for the target date
-        for pet in owner.get_pets():
+        for pet in owner.pets:
             if pet.pet_id == self.pet.pet_id:
                 continue
             for task in pet.tasks:
@@ -561,17 +514,28 @@ class Scheduler:
 
         return sorted(all_times, key=lambda x: x[0])
 
-    def _satisfies_constraints(self, task: Task, start_time: datetime, constraints: List[Constraint]) -> bool:
-        """Check if a proposed start time satisfies all constraints for the task."""
+    def _satisfies_constraints(self, task: Task, start_time: datetime, constraints: List[Constraint]) -> tuple:
+        """Check if a proposed start time satisfies all constraints for the task.
+
+        Returns:
+            (satisfies_hard, soft_score) - whether hard constraints pass and a score for soft constraints (higher is better)
+        """
         time_slot = {"start": start_time, "end": self._calculate_end_time(start_time, task.default_duration)}
+        soft_score = 0
 
         for constraint in constraints:
-            if constraint.is_hard_constraint and not constraint.validate(task, time_slot):
-                return False
-        return True
+            if constraint.is_hard_constraint:
+                if not constraint.validate(task, time_slot):
+                    return (False, 0)
+            else:
+                # Soft constraint - reward if satisfied
+                if constraint.validate(task, time_slot):
+                    soft_score += constraint.priority
+
+        return (True, soft_score)
 
     def explain_schedule(self, daily_plan_explanation: str = "") -> str:
-        """Generate a detailed human-readable explanation of the daily schedule with statistics."""
+        """Generate a detailed human-readable explanation of the daily schedule with reasoning."""
         if not self.pet.tasks:
             return "No tasks scheduled."
 
@@ -582,22 +546,29 @@ class Scheduler:
         # Sort by scheduled time (start_time), with unscheduled tasks at the end
         sorted_tasks = sorted(self.pet.tasks, key=lambda t: t.start_time or datetime.max)
 
-        explanation += f"\nTASK DETAILS:\n"
+        explanation += f"\nTASK DETAILS WITH SCHEDULING RATIONALE:\n"
         explanation += f"{'-'*60}\n"
 
-        for idx, task in enumerate(sorted_tasks, 1):
+        scheduled_count = 0
+        for task in sorted_tasks:
             if task.start_time and task.end_time:
+                scheduled_count += 1
                 start_str = task.start_time.strftime("%H:%M")
                 end_str = task.end_time.strftime("%H:%M")
-                duration = task.get_duration()
+                duration = task.default_duration
                 task_type = task.task_type.value.upper()
                 priority = task.priority.upper()
+                frequency = task.default_frequency.upper()
 
-                explanation += f"\n{idx}. {start_str} - {end_str} | {task.name}\n"
-                explanation += f"   ├─ Type: {task_type}\n"
-                explanation += f"   ├─ Duration: {duration} minutes\n"
-                explanation += f"   ├─ Priority: {priority}\n"
-                explanation += f"   └─ Description: {task.description}\n"
+                explanation += f"\n{scheduled_count}. {start_str} - {end_str} | {task.name}\n"
+                # Add scheduling rationale
+                task_reason = self._generate_task_explanation(task, task.start_time, task.end_time)
+                explanation += f"   ├─ Scheduling Rationale:\n"
+                for line in task_reason.split('\n')[1:]:  # Skip the time line
+                    explanation += f"   │  {line.strip()}\n"
+
+            else:
+                explanation += f"\n⚠ {task.name} (UNSCHEDULED - no available slot found)\n"
 
         explanation += f"\n{'-'*60}\n"
         explanation += f"SCHEDULING SUMMARY:\n"
@@ -606,12 +577,11 @@ class Scheduler:
         if daily_plan_explanation:
             explanation += daily_plan_explanation + "\n"
 
-        explanation += f"\n{'-'*60}\n"
-        explanation += f"STATISTICS:\n"
-        explanation += f"{'-'*60}\n"
-        explanation += f"Total Tasks: {len(self.pet.tasks)}\n"
-        total_duration = sum(t.get_duration() for t in self.pet.tasks)
-        explanation += f"Total Duration: {total_duration} minutes\n"
+        explanation += f"Successfully Scheduled: {scheduled_count}\n"
+        explanation += f"Unscheduled: {len(self.pet.tasks) - scheduled_count}\n"
+
+        total_duration = sum(t.default_duration for t in self.pet.tasks if t.start_time and t.end_time)
+        explanation += f"Total Scheduled Duration: {total_duration} minutes\n"
 
         # Get first and last tasks with scheduled times
         scheduled_tasks_with_times = [t for t in sorted_tasks if t.start_time and t.end_time]
@@ -625,33 +595,6 @@ class Scheduler:
         explanation += f"{'='*60}\n"
 
         return explanation
-
-    def filter_scheduled_tasks(self, completed: Optional[bool] = None, frequency: Optional[str] = None,
-                               scheduled_only: bool = False) -> List['Task']:
-        """Filter the current pet's tasks with advanced options.
-
-        Args:
-            completed: If True, return only completed tasks. If False, return only pending. If None, return all.
-            frequency: Filter by frequency ("daily", "weekly", etc.). If None, return all frequencies.
-            scheduled_only: If True, only return tasks with start_time and end_time set.
-
-        Returns:
-            Filtered list of tasks.
-        """
-        filtered = self.pet.filter_tasks(completed=completed, frequency=frequency)
-
-        if scheduled_only:
-            filtered = [t for t in filtered if t.start_time and t.end_time]
-
-        return filtered
-
-    def get_unscheduled_tasks(self) -> List['Task']:
-        """Get all tasks that haven't been scheduled (no start/end time)."""
-        return [t for t in self.pet.tasks if not t.start_time or not t.end_time]
-
-    def get_failed_to_schedule(self) -> List['Task']:
-        """Get pending tasks that couldn't be scheduled."""
-        return [t for t in self.pet.tasks if not t.is_completed and (not t.start_time or not t.end_time)]
 
     def detect_conflicts(self, target_date: Optional[datetime] = None) -> List[tuple]:
         """Detect conflicts between tasks on the same date across all pets owned by the owner.
@@ -667,7 +610,7 @@ class Scheduler:
 
         # Get all tasks with times to check
         all_tasks_with_times = []
-        for pet in owner.get_pets():
+        for pet in owner.pets:
             for task in pet.tasks:
                 if task.start_time and task.end_time:
                     if target_date is None or task.due_date.date() == target_date.date():

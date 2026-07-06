@@ -84,7 +84,7 @@ class TestPetTaskCount(unittest.TestCase):
     def test_adding_task_increases_pet_task_count(self):
         """Verify that adding a task to a pet increases the pet's task count."""
         # Arrange: Pet should start with zero tasks
-        initial_count = self.pet.get_task_count() if hasattr(self.pet, 'get_task_count') else 0
+        initial_count = len(self.pet.tasks)
         self.assertEqual(initial_count, 0, "Pet should start with zero tasks")
 
         # Act: Create and add a task to the pet
@@ -99,16 +99,16 @@ class TestPetTaskCount(unittest.TestCase):
             pet=self.pet,
             due_date=datetime.now()
         )
-        self.pet.add_task(task1) if hasattr(self.pet, 'add_task') else self.pet.tasks.append(task1)
+        self.pet.add_task(task1)
 
         # Assert: Pet's task count should increase by 1
-        updated_count = self.pet.get_task_count() if hasattr(self.pet, 'get_task_count') else len(self.pet.tasks)
+        updated_count = len(self.pet.tasks)
         self.assertEqual(updated_count, 1, "Pet's task count should be 1 after adding one task")
 
     def test_adding_multiple_tasks_increases_pet_task_count(self):
         """Verify that adding multiple tasks to a pet increases the pet's task count accordingly."""
         # Arrange: Pet should start with zero tasks
-        initial_count = self.pet.get_task_count() if hasattr(self.pet, 'get_task_count') else 0
+        initial_count = len(self.pet.tasks)
         self.assertEqual(initial_count, 0, "Pet should start with zero tasks")
 
         # Act: Create and add multiple tasks to the pet
@@ -128,14 +128,14 @@ class TestPetTaskCount(unittest.TestCase):
         ]
 
         for task in tasks:
-            self.pet.add_task(task) if hasattr(self.pet, 'add_task') else self.pet.tasks.append(task)
+            self.pet.add_task(task)
 
         # Assert: Pet's task count should be 3
-        updated_count = self.pet.get_task_count() if hasattr(self.pet, 'get_task_count') else len(self.pet.tasks)
+        updated_count = len(self.pet.tasks)
         self.assertEqual(updated_count, 3, "Pet's task count should be 3 after adding three tasks")
 
     def test_get_schedule_returns_all_pet_tasks(self):
-        """Verify that get_schedule() returns all tasks added to the pet."""
+        """Verify that pet.tasks returns all tasks added to the pet."""
         # Arrange: Add multiple tasks to the pet
         task1 = Task(
             task_id="task_sched_001",
@@ -160,11 +160,11 @@ class TestPetTaskCount(unittest.TestCase):
             due_date=datetime.now()
         )
 
-        self.pet.add_task(task1) if hasattr(self.pet, 'add_task') else self.pet.tasks.append(task1)
-        self.pet.add_task(task2) if hasattr(self.pet, 'add_task') else self.pet.tasks.append(task2)
+        self.pet.add_task(task1)
+        self.pet.add_task(task2)
 
-        # Act: Get the pet's schedule
-        schedule = self.pet.get_schedule()
+        # Act: Get the pet's tasks
+        schedule = self.pet.tasks.copy()
 
         # Assert: Schedule should contain both tasks
         self.assertEqual(len(schedule), 2, "Schedule should contain 2 tasks")
@@ -447,7 +447,7 @@ class TestRecurringTaskEdgeCases(unittest.TestCase):
         next_task = task.create_next_occurrence()
 
         # Assert
-        self.assertEqual(len(next_task.get_constraints()), 1)
+        self.assertEqual(len(next_task.constraints), 1)
         self.assertEqual(next_task.constraints[0].constraint_id, "constraint_morning")
 
     def test_recurring_task_id_chain(self):

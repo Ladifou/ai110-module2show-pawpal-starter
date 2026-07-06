@@ -6,13 +6,9 @@ classDiagram
         -phone: string
         -address: string
         -preferences: string[]
-        -pets: Pet[]
         +addPreference(preference: string): void
         +getPreferences(): string[]
         +removePreference(preference: string): void
-        +addPet(pet: Pet): void
-        +removePet(pet: Pet): void
-        +getPets(): Pet[]
         +requestDailyPlan(pet: Pet, date: DateTime): object
     }
 
@@ -23,11 +19,8 @@ classDiagram
         -breed: string
         -age: int
         -owner: Owner
-        -tasks: Task[]
-        +addTask(task: Task): void
         +updateInfo(data: object): void
         +getSchedule(): Task[]
-        +getTaskCount(): int
     }
 
     class Task {
@@ -69,6 +62,8 @@ classDiagram
     class Scheduler {
         -schedulerId: string
         -pet: Pet
+        -owner: Owner
+        -tasks: Task[]
         +generateDailyPlan(date: DateTime): object
         +generateConstraints(pet: Pet, owner: Owner): Constraint[]
         +scheduleTasks(task: Task, constraints: Constraint[]): boolean
